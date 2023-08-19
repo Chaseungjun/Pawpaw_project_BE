@@ -1,11 +1,12 @@
 package kr.co.pawpaw.domainrdb.board;
 
 import kr.co.pawpaw.domainrdb.board.dto.BoardDto;
+import kr.co.pawpaw.domainrdb.boardImg.entity.BoardImg;
+import kr.co.pawpaw.domainrdb.common.BaseTimeEntity;
 import kr.co.pawpaw.domainrdb.user.domain.User;
-import lombok.*;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.Builder;
+import lombok.Getter;
+import org.hibernate.annotations.Where;
 
 import javax.persistence.*;
 import java.util.HashSet;
@@ -13,7 +14,7 @@ import java.util.Set;
 
 @Entity
 @Getter
-@Where(clause = "isRemoved = false")
+@Where(clause = "is_Removed = false")
 public class Board extends BaseTimeEntity {
 
     @Id
@@ -35,14 +36,11 @@ public class Board extends BaseTimeEntity {
     @Column(name = "liked_count")
     private int likedCount;
 
-    @OneToMany(mappedBy = "board", orphanRemoval = true, cascade = CascadeType.ALL)
-    private Set<BoardLikes> boardLikes = new HashSet<>();
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
     private Set<BoardImg> imgSet = new HashSet<>();
 
@@ -64,6 +62,7 @@ public class Board extends BaseTimeEntity {
         return board;
     }
 
+    // 나중에 비관적 락, 낙관적 락, 스프링 스케줄러, 배치 등을 적용해서 수정
     public void plusLikedCount(){
         this.likedCount = likedCount +1;
     }
@@ -93,7 +92,6 @@ public class Board extends BaseTimeEntity {
     }
 
     public void clearImages(){
-        imgSet.stream().forEach(boardImg -> boardImg.changeBoard(null));  // 관계를 끊어준다
         this.imgSet.clear();
     }
 
