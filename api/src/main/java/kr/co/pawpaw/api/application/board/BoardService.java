@@ -1,8 +1,13 @@
 package kr.co.pawpaw.api.application.board;
 
+import kr.co.pawpaw.common.exception.common.board.BoardException;
+import kr.co.pawpaw.common.exception.common.board.BoardException.BoardDeleteException;
+import kr.co.pawpaw.common.exception.common.board.BoardException.BoardRegisterException;
+import kr.co.pawpaw.common.exception.common.board.BoardException.BoardUpdateException;
+import kr.co.pawpaw.common.exception.user.NotFoundUserException;
 import kr.co.pawpaw.domainrdb.board.Board;
+import kr.co.pawpaw.domainrdb.board.dto.BoardDto;
 import kr.co.pawpaw.domainrdb.board.dto.BoardDto.BoardRegisterDto;
-import kr.co.pawpaw.domainrdb.board.dto.BoardDto.BoardResponseDto;
 import kr.co.pawpaw.domainrdb.board.dto.BoardDto.BoardUpdateDto;
 import kr.co.pawpaw.domainrdb.board.repository.BoardRepository;
 import kr.co.pawpaw.domainrdb.user.domain.User;
@@ -26,23 +31,23 @@ public class BoardService {
     private final BoardRepository boardRepository;
 
     @Transactional
-    public BoardResponseDto register(UserId userId, BoardRegisterDto registerDto) {
+    public BoardDto.RegisterResponseDto register(UserId userId, BoardRegisterDto registerDto) {
         if (StringUtils.hasText(registerDto.getTitle()) && StringUtils.hasText(registerDto.getContent())) {
 
             User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
-
             Board board = Board.createBoard(registerDto, user);
 
             boardRepository.save(board);
 
-            return BoardResponseDto.builder()
+            return BoardDto.RegisterResponseDto.builder()
                     .title(board.getTitle())
                     .content(board.getContent())
                     .writer(user.getNickname())
-                    .createdAt(LocalDateTime.now())
+                    .createDate(LocalDateTime.now())
                     .build();
+        }else {
+            throw new BoardRegisterException();
         }
-        return null;
     }
 
     @Transactional
@@ -51,16 +56,13 @@ public class BoardService {
         User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
         Board board = boardRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         if (user.getUserId() != board.getUser().getUserId()) {
-            return null;
+            throw new NotFoundUserException();
         }
-
-        if (updateDto.getTitle() != null || updateDto.getContent() != null){
+        if (updateDto.getTitle() != null || updateDto.getContent() != null) {
             board.updateTitleAndContent(updateDto.getTitle(), updateDto.getContent());
+        } else {
+            throw new BoardUpdateException();
         }
-
-
-
-
         return BoardUpdateDto.builder()
                 .title(board.getTitle())
                 .content(board.getContent())
@@ -68,16 +70,19 @@ public class BoardService {
     }
 
 
-
     @Transactional
-    public void removeBoard(UserId userId, Long id) {
+    public boolean removeBoard(UserId userId, Long id) {
 
         User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
         Board board = boardRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         if (user.getUserId() != board.getUser().getUserId()) {
-
+            throw new NotFoundUserException();
         }
-        boardRepository.delete(board);
+        if (board == null){
+            throw new BoardDeleteException();
+        }
+        board.remove();
+        return true;
     }
 
 }
